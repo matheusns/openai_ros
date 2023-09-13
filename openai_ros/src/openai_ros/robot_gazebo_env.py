@@ -1,6 +1,6 @@
 import rospy
-import gym
-from gym.utils import seeding
+import gymnasium as gym
+from gymnasium.utils import seeding
 from .gazebo_connection import GazeboConnection
 from .controllers_connection import ControllersConnection
 #https://bitbucket.org/theconstructcore/theconstruct_msgs/src/master/msg/RLExperimentInfo.msg
@@ -62,23 +62,26 @@ class RobotGazeboEnv(gym.Env):
         self._set_action(action)
         self.gazebo.pauseSim()
         obs = self._get_obs()
-        done = self._is_done(obs)
+        terminated = self._is_terminated(obs)
+        reward = self._compute_reward(obs, terminated)
+        truncated = self._is_truncated(obs)
         info = {}
-        reward = self._compute_reward(obs, done)
         self.cumulated_episode_reward += reward
 
         rospy.logdebug("END STEP OpenAIROS")
 
-        return obs, reward, done, info
+        return obs, reward, terminated, truncated, info
 
-    def reset(self):
+    def reset(self, seed=None, options=None):
         rospy.logdebug("Reseting RobotGazeboEnvironment")
         self._reset_sim()
         self._init_env_variables()
         self._update_episode()
         obs = self._get_obs()
+        info = {}
         rospy.logdebug("END Reseting RobotGazeboEnvironment")
-        return obs
+
+        return obs, info
 
     def close(self):
         """
@@ -181,7 +184,12 @@ class RobotGazeboEnv(gym.Env):
         """
         raise NotImplementedError()
 
-    def _is_done(self, observations):
+    def _is_terminated(self, observations):
+        """Indicates whether or not the episode is done ( the robot has fallen for example).
+        """
+        raise NotImplementedError()
+
+    def _is_truncated(self, observations):
         """Indicates whether or not the episode is done ( the robot has fallen for example).
         """
         raise NotImplementedError()
